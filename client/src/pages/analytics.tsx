@@ -25,21 +25,104 @@ import { Skeleton } from "@/components/ui/skeleton";
 export default function Analytics() {
   const { data: metrics, isLoading: isLoadingMetrics } = useQuery({
     queryKey: ["/api/analytics/metrics"],
+    refetchInterval: 30000, // Refresh every 30 seconds
   });
 
   const { data: agents } = useQuery<Agent[]>({
     queryKey: ["/api/agents"],
+    refetchInterval: 30000,
   });
 
   const { data: assignments } = useQuery<Assignment[]>({
     queryKey: ["/api/assignments"],
+    refetchInterval: 30000,
   });
+
+  const chartData = metrics?.dailyMetrics?.map((metric) => ({
+    date: new Date(metric.date).toLocaleDateString(),
+    assignments: metric.assignments,
+    conversions: metric.conversions,
+    conversionRate: metric.conversionRate
+  })) || [];
 
   if (isLoadingMetrics) {
     return (
       <div className="container mx-auto p-6">
         <h1 className="text-3xl font-bold mb-6">Analytics Dashboard</h1>
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Total Agents</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{metrics?.totalAgents || 0}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Total Assignments</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{metrics?.totalAssignments || 0}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Average AI Score</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{metrics?.averageAiScore || 0}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Conversion Rate</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{metrics?.conversionRate || 0}%</div>
+            </CardContent>
+          </Card>
+        </div>
+        
+        <div className="grid gap-6 md:grid-cols-2 mb-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Daily Assignments</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[300px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={chartData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" />
+                    <YAxis />
+                    <Tooltip />
+                    <Bar dataKey="assignments" fill="#8884d8" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader>
+              <CardTitle>Conversion Rate Trend</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[300px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={chartData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" />
+                    <YAxis />
+                    <Tooltip />
+                    <Line type="monotone" dataKey="conversionRate" stroke="#82ca9d" />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
           {[...Array(4)].map((_, i) => (
             <Card key={i}>
               <CardHeader>
