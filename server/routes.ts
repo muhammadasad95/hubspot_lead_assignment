@@ -91,12 +91,14 @@ export async function registerRoutes(app: Express) {
     try {
       const hubspot = await createHubSpotClient();
       const unassignedLeads = await hubspot.getUnassignedLeads();
-
       const newLeads = [];
       for (const lead of unassignedLeads) {
         const existingLead = await storage.getLeadByHubspotId(lead.hubspotId);
-        if (!existingLead) {
+      console.log('existingLead', existingLead)
+      if (!existingLead) {
           const createdLead = await storage.createLead(lead);
+      console.log('createdLead', createdLead)
+
           const aiScore = await scoreLead(lead);
           const scoredLead = await storage.updateLead(createdLead.id, { aiScore });
           newLeads.push(scoredLead);

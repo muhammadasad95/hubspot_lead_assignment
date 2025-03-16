@@ -47,4 +47,4 @@ mode = "sequential"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "OPENAI_API_KEY=$REPLIT_SECRET_OPENAI_API_KEY HUBSPOT_ACCESS_TOKEN=$REPLIT_SECRET_HUBSPOT_ACCESS_TOKEN npm run dev"
+args = "OPENAI_API_KEY=$REPLIT_SECRET_OPENAI_API_KEY HUBSPOT_ACCESS_TOKEN=$HUBSPOT_ACCESS_TOKEN npm run dev"
