@@ -29,11 +29,7 @@ export default function Analytics() {
     queryKey: ["/api/assignments"],
   });
 
-  const { data: metrics, isLoading: isLoadingMetrics } = useQuery<PerformanceMetric[]>({
-    queryKey: ["/api/performance-metrics"],
-  });
-
-  if (isLoadingAgents || isLoadingAssignments || isLoadingMetrics) {
+  if (isLoadingAgents || isLoadingAssignments) {
     return (
       <div className="flex h-full items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin" />
@@ -58,15 +54,6 @@ export default function Analytics() {
       avgResponseTime: agent.responseTime,
     };
   });
-
-  // Prepare historical metrics for charts
-  const historicalData = metrics?.map(metric => ({
-    date: new Date(metric.date).toLocaleDateString(),
-    conversions: metric.leadsConverted,
-    assignments: metric.leadsAssigned,
-    avgScore: parseFloat(metric.averageMatchScore.toString()),
-    responseTime: metric.averageResponseTime,
-  }));
 
   return (
     <div className="container mx-auto p-6">
@@ -123,27 +110,6 @@ export default function Analytics() {
       <div className="grid gap-6 md:grid-cols-2 mb-6">
         <Card>
           <CardHeader>
-            <CardTitle>Historical Performance</CardTitle>
-            <CardDescription>Conversions and assignments over time</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={historicalData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="date" />
-                  <YAxis />
-                  <Tooltip />
-                  <Line type="monotone" dataKey="conversions" stroke="#2563eb" name="Conversions" />
-                  <Line type="monotone" dataKey="assignments" stroke="#7c3aed" name="Assignments" />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
             <CardTitle>Agent Performance</CardTitle>
             <CardDescription>Conversion rates by agent</CardDescription>
           </CardHeader>
@@ -156,6 +122,27 @@ export default function Analytics() {
                   <YAxis />
                   <Tooltip />
                   <Bar dataKey="conversionRate" fill="#2563eb" name="Conversion Rate %" />
+                  <Bar dataKey="aiScore" fill="#7c3aed" name="AI Score" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Response Times</CardTitle>
+            <CardDescription>Average response time by agent (minutes)</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[300px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={agentPerformance}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <Tooltip />
+                  <Bar dataKey="avgResponseTime" fill="#2563eb" name="Avg Response Time" />
                 </BarChart>
               </ResponsiveContainer>
             </div>
