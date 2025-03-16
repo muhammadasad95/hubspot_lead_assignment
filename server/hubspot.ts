@@ -42,23 +42,30 @@ export class HubSpotClient {
 
   async getAgents(): Promise<InsertAgent[]> {
     try {
-      // Fetch team members/owners from HubSpot
-      const response = await this.client.crm.owners.ownersApi.getPage(
-        undefined, // after
-        undefined, // before
-        10, // limit
-        undefined, // archived
-        ["firstName", "lastName", "email", "userId"] // properties
-      );
+      const { results } = await this.client.crm.contacts.searchApi.doSearch({
+        filterGroups: [
+          {
+            filters: [
+              {
+                propertyName: "is_agent",
+                operator: "EQ",
+                value: "true"
+              }
+            ]
+          }
+        ],
+        properties: ["email", "firstname", "lastname"],
+        limit: 100
+      });
 
-      return response.results
-        .filter(owner => owner.email) // Only include owners with email addresses
-        .map(owner => ({
-          name: owner.firstName && owner.lastName 
-            ? `${owner.firstName} ${owner.lastName}`.trim()
-            : owner.email!.split('@')[0],
-          email: owner.email!,
-          specialties: [], // HubSpot doesn't have specialties, we maintain this locally
+      return results
+        .filter(contact => contact.properties.email)
+        .map(contact => ({
+          name: contact.properties.firstname && contact.properties.lastname
+            ? `${contact.properties.firstname} ${contact.properties.lastname}`.trim()
+            : contact.properties.email!.split('@')[0],
+          email: contact.properties.email!,
+          specialties: [], // We maintain specialties locally
         }));
     } catch (error) {
       console.error('HubSpot API Error:', error);

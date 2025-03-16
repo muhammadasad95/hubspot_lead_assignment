@@ -1,0 +1,129 @@
+  app.get("/api/leads", async (req, res) => {
+    try {
+      const { after } = req.query;
+      const limit = parseInt(req.query.limit) || 10;
+  
+      // Manually selected properties
+      const properties = [
+        "email",
+        "firstname",
+        "lastname",
+        "company",
+        "jobtitle",
+        "company_size",
+        "annualrevenue",
+        "industry",
+        "lifecyclestage",
+        "lead_source",
+        "hs_lead_status",
+        "hs_analytics_num_visits",
+        "hs_email_open",
+        "hs_email_click",
+        "hs_social_last_engagement",
+        "hs_latest_meeting_activity",
+        "hs_latest_sequence_enrolled",
+        "hs_latest_sequence_finished_date",
+        "what_is_your_biggest_pain_point_",
+        "what_are_the_top_1_3_items_you_can_use_help_with_right_now_",
+        "calendly_question_4", // Custom property for agent assignment
+      ];
+  
+      // Fetch leads with selected properties and filters
+      const response = await axios.get(
+        "https://api.hubapi.com/crm/v3/objects/contacts",
+        {
+          headers: {
+            Authorization: `Bearer ${HUBSPOT_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          params: {
+            limit,
+            after,
+            properties: properties.join(","), // Include selected properties
+          },
+          data: {
+            filterGroups: [
+              {
+                filters: [
+                  {
+                    propertyName: "lifecyclestage",
+                    operator: "EQ",
+                    value: "lead", // Filter by lifecycle stage
+                  },
+                  {
+                    propertyName: "calendly_question_4", // Filter leads without an assigned agent
+                    operator: "NOT_HAS_PROPERTY",
+                  },
+                ],
+              },
+            ],
+          },
+        }
+      );
+  
+      // Log the API response for debugging
+  
+      // Calculate scores for each lead
+      const leadsWithScores = response.data.results.map((lead) => ({
+        ...lead,
+        score: calculateLeadScore(lead),
+      }));
+  
+      // Assign agents to leads
+      for (const lead of leadsWithScores) {
+        const agent = await assignAgent();
+        if (!agent || !agent.id) {
+            throw new Error("No valid agent found to assign to the lead.");
+          }
+          try {
+            const upsertLead = await prisma.lead.upsert({
+                where: { email: lead.properties.email },
+                update: { leadScore: lead.score, agentId: agent.id }, // Update score and assign agent
+                create: {
+                  email: lead.properties.email,
+                  firstName: lead.properties?.firstname,
+                  lastName: lead.properties?.lastname,
+                  company: lead.properties.company,
+                  leadScore: lead.score,
+                  agentId: agent.id, // Assign agent
+                },
+              });
+          } catch (error) {
+            console.log('error updating the lead in db', error)
+          }
+
+
+        try {
+
+              await axios.patch(
+                `https://api.hubapi.com/crm/v3/objects/contacts/${lead.id}`,
+                {
+                  properties: {
+                      calendly_question_4: agent.id, // Update the assigned agent in HubSpot
+                  },
+                },
+                {
+                  headers: {
+                    Authorization: `Bearer ${HUBSPOT_API_KEY}`,
+                    "Content-Type": "application/json",
+                  },
+                }
+              );
+        } catch (error) {
+            console.log('error updating agent id to the lead in hubspot', error)
+        }
+  
+        // Update HubSpot with the assigned agent
+       
+      }
+  
+      res.json({
+        results: leadsWithScores,
+        paging: response.data.paging,
+        total: response.data.total,
+      });
+    } catch (error) {
+      console.error("Error fetching contacts:", error.response?.data || error.message);
+      res.status(error.response?.status || 500).json({ error: "Failed to fetch contacts" });
+    }
+  });
