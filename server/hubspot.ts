@@ -1,4 +1,4 @@
-import type { InsertLead } from "@shared/schema";
+import type { InsertLead, InsertAgent } from "@shared/schema";
 
 const HUBSPOT_BASE_URL = "https://api.hubapi.com";
 
@@ -53,6 +53,20 @@ export class HubSpotClient {
       company: contact.properties.company,
       source: contact.properties.lead_source,
       metadata: contact.properties,
+    }));
+  }
+
+  async getAgents(): Promise<InsertAgent[]> {
+    const response = await this.request("/crm/v3/owners", {
+      method: "GET",
+    });
+
+    return response.map((owner: any) => ({
+      name: owner.firstName && owner.lastName 
+        ? `${owner.firstName} ${owner.lastName}`.trim()
+        : owner.email.split('@')[0],
+      email: owner.email,
+      specialties: [], // HubSpot doesn't have a direct equivalent, we'll maintain this locally
     }));
   }
 

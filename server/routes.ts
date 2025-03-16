@@ -28,6 +28,29 @@ export async function registerRoutes(app: Express) {
     res.json(updatedAgent);
   });
 
+  app.post("/api/agents/sync", async (_req, res) => {
+    try {
+      const hubspot = await createHubSpotClient();
+      const hubspotAgents = await hubspot.getAgents();
+
+      const newAgents = [];
+      for (const agent of hubspotAgents) {
+        const existingAgent = await storage.getAgentByEmail(agent.email);
+        if (!existingAgent) {
+          const createdAgent = await storage.createAgent(agent);
+          const aiScore = await scoreAgent(createdAgent);
+          const scoredAgent = await storage.updateAgent(createdAgent.id, { aiScore });
+          newAgents.push(scoredAgent);
+        }
+      }
+
+      res.json(newAgents);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      res.status(500).json({ message });
+    }
+  });
+
   app.delete("/api/agents/:id", async (req, res) => {
     const id = parseInt(req.params.id);
     if (isNaN(id)) {
@@ -50,21 +73,22 @@ export async function registerRoutes(app: Express) {
     try {
       const hubspot = await createHubSpotClient();
       const unassignedLeads = await hubspot.getUnassignedLeads();
-      
+
       const newLeads = [];
       for (const lead of unassignedLeads) {
         const existingLead = await storage.getLeadByHubspotId(lead.hubspotId);
         if (!existingLead) {
           const createdLead = await storage.createLead(lead);
-          const aiScore = await scoreLead(createdLead);
+          const aiScore = await scoreLead(lead);
           const scoredLead = await storage.updateLead(createdLead.id, { aiScore });
           newLeads.push(scoredLead);
         }
       }
-      
+
       res.json(newLeads);
     } catch (error) {
-      res.status(500).json({ message: error.message });
+      const message = error instanceof Error ? error.message : "Unknown error";
+      res.status(500).json({ message });
     }
   });
 
@@ -78,10 +102,10 @@ export async function registerRoutes(app: Express) {
     try {
       const leads = await storage.listLeads();
       const agents = await storage.listAgents();
-      
+
       const unassignedLeads = leads.filter(lead => !lead.assignedAgentId);
       const activeAgents = agents.filter(agent => agent.status === "active");
-      
+
       if (unassignedLeads.length === 0 || activeAgents.length === 0) {
         res.json([]);
         return;
@@ -90,14 +114,14 @@ export async function registerRoutes(app: Express) {
       const assignments = [];
       for (const lead of unassignedLeads) {
         let bestMatch = { agentId: 0, score: -1 };
-        
+
         for (const agent of activeAgents) {
           const matchScore = await calculateMatchScore(lead, agent);
           if (matchScore > bestMatch.score) {
             bestMatch = { agentId: agent.id, score: matchScore };
           }
         }
-        
+
         if (bestMatch.score > 0) {
           const assignment = await storage.createAssignment({
             leadId: lead.id,
@@ -105,23 +129,24 @@ export async function registerRoutes(app: Express) {
             assignedAt: new Date(),
             matchScore: bestMatch.score,
           });
-          
+
           await storage.updateLead(lead.id, {
             assignedAgentId: bestMatch.agentId,
             assignedAt: new Date(),
           });
-          
+
           const agent = await storage.getAgent(bestMatch.agentId);
           const hubspot = await createHubSpotClient();
           await hubspot.updateLeadAssignment(lead.hubspotId, agent!.email);
-          
+
           assignments.push(assignment);
         }
       }
-      
+
       res.json(assignments);
     } catch (error) {
-      res.status(500).json({ message: error.message });
+      const message = error instanceof Error ? error.message : "Unknown error";
+      res.status(500).json({ message });
     }
   });
 

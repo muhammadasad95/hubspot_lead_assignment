@@ -1,7 +1,7 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { Lead, Assignment, Agent } from "@shared/schema";
 import { Loader2 } from "lucide-react";
@@ -27,6 +27,7 @@ export default function Dashboard() {
       return res.json();
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/leads"] });
       toast({
         title: "Leads synced successfully",
         description: "New leads have been imported from HubSpot",
@@ -41,12 +42,35 @@ export default function Dashboard() {
     },
   });
 
+  const syncAgentsMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/agents/sync");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/agents"] });
+      toast({
+        title: "Agents synced successfully",
+        description: "New agents have been imported from HubSpot",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error syncing agents",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const autoAssignMutation = useMutation({
     mutationFn: async () => {
       const res = await apiRequest("POST", "/api/assignments/auto");
       return res.json();
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/assignments"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/leads"] });
       toast({
         title: "Leads assigned successfully",
         description: "The AI has matched leads with the best agents",
@@ -79,6 +103,15 @@ export default function Dashboard() {
         <h1 className="text-3xl font-bold">Lead Assignment Dashboard</h1>
         <div className="flex gap-2">
           <Button
+            onClick={() => syncAgentsMutation.mutate()}
+            disabled={syncAgentsMutation.isPending}
+          >
+            {syncAgentsMutation.isPending && (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            )}
+            Sync HubSpot Agents
+          </Button>
+          <Button
             onClick={() => syncLeadsMutation.mutate()}
             disabled={syncLeadsMutation.isPending}
           >
@@ -108,7 +141,7 @@ export default function Dashboard() {
             <p className="text-3xl font-bold">{unassignedLeads.length}</p>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader>
             <CardTitle>Total Assignments</CardTitle>
@@ -117,7 +150,7 @@ export default function Dashboard() {
             <p className="text-3xl font-bold">{totalAssignments}</p>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader>
             <CardTitle>Active Agents</CardTitle>
@@ -137,7 +170,7 @@ export default function Dashboard() {
                 {assignments.slice(0, 5).map((assignment) => {
                   const lead = leads?.find(l => l.id === assignment.leadId);
                   const agent = agents?.find(a => a.id === assignment.agentId);
-                  
+
                   return (
                     <div key={assignment.id} className="py-3">
                       <div className="flex justify-between items-center">
