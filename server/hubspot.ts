@@ -1,67 +1,44 @@
 import type { InsertLead, InsertAgent } from "@shared/schema";
-
-const HUBSPOT_BASE_URL = "https://api.hubapi.com";
+import { Client } from "@hubspot/api-client";
 
 export class HubSpotClient {
-  private accessToken: string;
+  private client: Client;
 
   constructor(accessToken: string) {
-    this.accessToken = accessToken;
-  }
-
-  private async request(endpoint: string, options: RequestInit = {}) {
-    const response = await fetch(`${HUBSPOT_BASE_URL}${endpoint}`, {
-      ...options,
-      headers: {
-        Authorization: `Bearer ${this.accessToken}`,
-        "Content-Type": "application/json",
-        ...options.headers,
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error(`HubSpot API error: ${response.statusText}`);
-    }
-
-    return response.json();
+    this.client = new Client({ accessToken });
   }
 
   async getUnassignedLeads(): Promise<InsertLead[]> {
-    const response = await this.request("/crm/v3/objects/contacts/search", {
-      method: "POST",
-      body: JSON.stringify({
-        filterGroups: [
-          {
-            filters: [
-              {
-                propertyName: "hs_lead_status",
-                operator: "EQ",
-                value: "NEW",
-              },
-            ],
-          },
-        ],
-        properties: ["firstname", "lastname", "email", "company", "lead_source"],
-        limit: 100,
-      }),
+    const { results } = await this.client.crm.contacts.searchApi.doSearch({
+      filterGroups: [
+        {
+          filters: [
+            {
+              propertyName: "hs_lead_status",
+              operator: "EQ",
+              value: "NEW",
+            },
+          ],
+        },
+      ],
+      properties: ["firstname", "lastname", "email", "company", "lead_source"],
+      limit: 100,
     });
 
-    return response.results.map((contact: any) => ({
+    return results.map((contact) => ({
       hubspotId: contact.id,
-      name: `${contact.properties.firstname} ${contact.properties.lastname}`.trim(),
+      name: `${contact.properties.firstname || ''} ${contact.properties.lastname || ''}`.trim(),
       email: contact.properties.email,
-      company: contact.properties.company,
-      source: contact.properties.lead_source,
+      company: contact.properties.company || null,
+      source: contact.properties.lead_source || null,
       metadata: contact.properties,
     }));
   }
 
   async getAgents(): Promise<InsertAgent[]> {
-    const response = await this.request("/crm/v3/owners", {
-      method: "GET",
-    });
+    const { results } = await this.client.crm.owners.ownersApi.getPage();
 
-    return response.map((owner: any) => ({
+    return results.map((owner) => ({
       name: owner.firstName && owner.lastName 
         ? `${owner.firstName} ${owner.lastName}`.trim()
         : owner.email.split('@')[0],
@@ -71,14 +48,11 @@ export class HubSpotClient {
   }
 
   async updateLeadAssignment(hubspotId: string, agentEmail: string): Promise<void> {
-    await this.request(`/crm/v3/objects/contacts/${hubspotId}`, {
-      method: "PATCH",
-      body: JSON.stringify({
-        properties: {
-          hs_lead_status: "ASSIGNED",
-          assigned_agent_email: agentEmail,
-        },
-      }),
+    await this.client.crm.contacts.basicApi.update(hubspotId, {
+      properties: {
+        hs_lead_status: "ASSIGNED",
+        assigned_agent_email: agentEmail,
+      },
     });
   }
 }
