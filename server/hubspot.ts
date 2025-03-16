@@ -42,12 +42,14 @@ export class HubSpotClient {
 
   async getAgents(): Promise<InsertAgent[]> {
     try {
-      // Use proper API endpoint and method
-      const response = await this.client.crm.owners.ownersApi.getPage(100, undefined, [
-        'firstName',
-        'lastName',
-        'email'
-      ]);
+      // Fetch team members/owners from HubSpot
+      const response = await this.client.crm.owners.ownersApi.getPage(
+        undefined, // after
+        undefined, // before
+        10, // limit
+        undefined, // archived
+        ["firstName", "lastName", "email", "userId"] // properties
+      );
 
       return response.results
         .filter(owner => owner.email) // Only include owners with email addresses
