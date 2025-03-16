@@ -14,6 +14,7 @@ localPort = 5000
 externalPort = 80
 
 [workflows]
+runButton = "Dev Server"
 
 [[workflows.workflow]]
 name = "Project"
@@ -38,3 +39,12 @@ task = "packager.installForAll"
 task = "shell.exec"
 args = "npm run dev"
 waitForPort = 5000
+
+[[workflows.workflow]]
+name = "Dev Server"
+author = 40545651
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "OPENAI_API_KEY=$REPLIT_SECRET_OPENAI_API_KEY HUBSPOT_ACCESS_TOKEN=$REPLIT_SECRET_HUBSPOT_ACCESS_TOKEN npm run dev"
