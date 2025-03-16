@@ -16,7 +16,7 @@ export class HubSpotClient {
             filters: [
               {
                 propertyName: "hs_lifecycle_stage",
-                operator: "eq",
+                operator: "EQ",
                 value: "lead"
               }
             ]
