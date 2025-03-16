@@ -1,4 +1,3 @@
-
 import type { Express } from "express";
 import { createServer } from "http";
 import { storage } from "./storage";
@@ -144,23 +143,30 @@ export async function registerRoutes(app: Express) {
         }
 
         if (bestMatch.score > 0) {
-          const assignment = await storage.createAssignment({
-            leadId: lead.id,
-            agentId: bestMatch.agentId,
-            assignedAt: new Date(),
-            matchScore: bestMatch.score,
-          });
+          try {
+            const agent = await storage.getAgent(bestMatch.agentId);
+            if (!agent) continue;
 
-          await storage.updateLead(lead.id, {
-            assignedAgentId: bestMatch.agentId,
-            assignedAt: new Date(),
-          });
+            const hubspot = await createHubSpotClient();
+            await hubspot.updateLeadAssignment(lead.hubspotId, agent.email);
 
-          const agent = await storage.getAgent(bestMatch.agentId);
-          const hubspot = await createHubSpotClient();
-          await hubspot.updateLeadAssignment(lead.hubspotId, agent!.email);
+            const assignment = await storage.createAssignment({
+              leadId: lead.id,
+              agentId: bestMatch.agentId,
+              assignedAt: new Date(),
+              matchScore: bestMatch.score,
+            });
 
-          assignments.push(assignment);
+            await storage.updateLead(lead.id, {
+              assignedAgentId: bestMatch.agentId,
+              assignedAt: new Date(),
+            });
+
+            assignments.push(assignment);
+          } catch (error) {
+            console.error(`Failed to assign lead ${lead.id}:`, error);
+            continue;
+          }
         }
       }
 
