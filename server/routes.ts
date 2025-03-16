@@ -1,31 +1,45 @@
+
 import type { Express } from "express";
 import { createServer } from "http";
 import { storage } from "./storage";
 import { createHubSpotClient } from "./hubspot";
 import { scoreAgent, scoreLead, calculateMatchScore } from "./openai";
 import { insertAgentSchema } from "@shared/schema";
-import { z } from "zod";
+import axios from "axios";
+
+const api = axios.create({
+  baseURL: 'http://0.0.0.0:5000/api',
+  timeout: 5000
+});
 
 export async function registerRoutes(app: Express) {
   const httpServer = createServer(app);
 
   // Agent routes
   app.get("/api/agents", async (_req, res) => {
-    const agents = await storage.listAgents();
-    res.json(agents);
+    try {
+      const agents = await storage.listAgents();
+      res.json(agents);
+    } catch (error) {
+      res.status(500).json({ message: error instanceof Error ? error.message : "Unknown error" });
+    }
   });
 
   app.post("/api/agents", async (req, res) => {
-    const parsed = insertAgentSchema.safeParse(req.body);
-    if (!parsed.success) {
-      res.status(400).json({ message: "Invalid agent data" });
-      return;
-    }
+    try {
+      const parsed = insertAgentSchema.safeParse(req.body);
+      if (!parsed.success) {
+        res.status(400).json({ message: "Invalid agent data" });
+        return;
+      }
 
-    const agent = await storage.createAgent(parsed.data);
-    const aiScore = await scoreAgent(agent);
-    const updatedAgent = await storage.updateAgent(agent.id, { aiScore });
-    res.json(updatedAgent);
+      const agent = await storage.createAgent(parsed.data);
+      const aiScore = await scoreAgent(agent);
+      const updatedAgent = await storage.updateAgent(agent.id, { aiScore });
+      res.json(updatedAgent);
+    } catch (error) {
+      res.status(500).json({ message: error instanceof Error ? error.message : "Unknown error" });
+    }
   });
 
   app.post("/api/agents/sync", async (_req, res) => {
@@ -46,29 +60,34 @@ export async function registerRoutes(app: Express) {
 
       res.json(newAgents);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown error";
-      res.status(500).json({ message });
+      res.status(500).json({ message: error instanceof Error ? error.message : "Unknown error" });
     }
   });
 
   app.delete("/api/agents/:id", async (req, res) => {
-    const id = parseInt(req.params.id);
-    if (isNaN(id)) {
-      res.status(400).json({ message: "Invalid agent ID" });
-      return;
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        res.status(400).json({ message: "Invalid agent ID" });
+        return;
+      }
+
+      await storage.deleteAgent(id);
+      res.status(204).end();
+    } catch (error) {
+      res.status(500).json({ message: error instanceof Error ? error.message : "Unknown error" });
     }
-
-    await storage.deleteAgent(id);
-    res.status(204).end();
   });
 
-  // Lead routes
   app.get("/api/leads", async (_req, res) => {
-    const leads = await storage.listLeads();
-    res.json(leads);
+    try {
+      const leads = await storage.listLeads();
+      res.json(leads);
+    } catch (error) {
+      res.status(500).json({ message: error instanceof Error ? error.message : "Unknown error" });
+    }
   });
 
-  // Sync leads from HubSpot
   app.post("/api/leads/sync", async (_req, res) => {
     try {
       const hubspot = await createHubSpotClient();
@@ -87,15 +106,17 @@ export async function registerRoutes(app: Express) {
 
       res.json(newLeads);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown error";
-      res.status(500).json({ message });
+      res.status(500).json({ message: error instanceof Error ? error.message : "Unknown error" });
     }
   });
 
-  // Assignment routes
   app.get("/api/assignments", async (_req, res) => {
-    const assignments = await storage.getAssignments();
-    res.json(assignments);
+    try {
+      const assignments = await storage.getAssignments();
+      res.json(assignments);
+    } catch (error) {
+      res.status(500).json({ message: error instanceof Error ? error.message : "Unknown error" });
+    }
   });
 
   app.post("/api/assignments/auto", async (_req, res) => {
@@ -145,8 +166,7 @@ export async function registerRoutes(app: Express) {
 
       res.json(assignments);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown error";
-      res.status(500).json({ message });
+      res.status(500).json({ message: error instanceof Error ? error.message : "Unknown error" });
     }
   });
 

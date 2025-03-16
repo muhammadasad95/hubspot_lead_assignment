@@ -1,17 +1,25 @@
+
 import type { InsertLead, InsertAgent } from "@shared/schema";
-import { Client } from "@hubspot/api-client";
 import axios from "axios";
 
 export class HubSpotClient {
-  private client: Client;
+  private accessToken: string;
+  private api: ReturnType<typeof axios.create>;
 
   constructor(accessToken: string) {
-    this.client = new Client({ accessToken });
+    this.accessToken = accessToken;
+    this.api = axios.create({
+      baseURL: 'https://api.hubapi.com',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
+      }
+    });
   }
 
   async getUnassignedLeads(): Promise<InsertLead[]> {
     try {
-      const { results } = await this.client.crm.contacts.searchApi.doSearch({
+      const { data } = await this.api.post('/crm/v3/objects/contacts/search', {
         filterGroups: [
           {
             filters: [
@@ -27,7 +35,7 @@ export class HubSpotClient {
         limit: 100,
       });
 
-      return results.map((contact) => ({
+      return data.results.map((contact: any) => ({
         hubspotId: contact.id,
         name: `${contact.properties.firstname || ''} ${contact.properties.lastname || ''}`.trim(),
         email: contact.properties.email,
@@ -43,38 +51,31 @@ export class HubSpotClient {
 
   async getAgents(): Promise<InsertAgent[]> {
     try {
-      const response = await axios.get(
-        "https://api.hubapi.com/crm/v3/objects/contacts",
-        {
-          headers: {
-            Authorization: `Bearer ${this.client.accessToken}`,
-            "Content-Type": "application/json",
-          },
-          params: {
-            properties: ["email", "firstname", "lastname"],
-            filterGroups: [
-              {
-                filters: [
-                  {
-                    propertyName: "is_agent",
-                    operator: "EQ",
-                    value: "true",
-                  },
-                ],
-              },
-            ],
-          },
+      const { data } = await this.api.get('/crm/v3/objects/contacts', {
+        params: {
+          properties: ["email", "firstname", "lastname"],
+          filterGroups: [
+            {
+              filters: [
+                {
+                  propertyName: "is_agent",
+                  operator: "EQ",
+                  value: "true",
+                },
+              ],
+            },
+          ],
         }
-      );
+      });
 
-      return response.data.results
-        .filter(contact => contact.properties.email)
-        .map(contact => ({
+      return data.results
+        .filter((contact: any) => contact.properties.email)
+        .map((contact: any) => ({
           name: contact.properties.firstname && contact.properties.lastname
             ? `${contact.properties.firstname} ${contact.properties.lastname}`.trim()
             : contact.properties.email.split('@')[0],
           email: contact.properties.email,
-          specialties: [], // We maintain specialties locally
+          specialties: [],
         }));
     } catch (error) {
       console.error('HubSpot API Error:', error);
@@ -84,7 +85,7 @@ export class HubSpotClient {
 
   async updateLeadAssignment(hubspotId: string, agentEmail: string): Promise<void> {
     try {
-      await this.client.crm.contacts.basicApi.update(hubspotId, {
+      await this.api.patch(`/crm/v3/objects/contacts/${hubspotId}`, {
         properties: {
           hs_lead_status: "ASSIGNED",
           assigned_agent_email: agentEmail,
