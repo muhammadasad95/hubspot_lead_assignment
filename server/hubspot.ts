@@ -91,7 +91,7 @@ export class HubSpotClient {
 export async function createHubSpotClient(): Promise<HubSpotClient> {
   const accessToken = process.env.REPLIT_SECRET_HUBSPOT_ACCESS_TOKEN;
   if (!accessToken) {
-    throw new Error("HUBSPOT_ACCESS_TOKEN environment variable is missing. Please add it to your Secrets.");
+    throw new Error("REPLIT_SECRET_HUBSPOT_ACCESS_TOKEN environment variable is missing. Please add it to your Secrets.");
   }
   return new HubSpotClient(accessToken);
 }
