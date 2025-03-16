@@ -1,4 +1,3 @@
-
 import { useQuery } from "@tanstack/react-query";
 import {
   Card,
@@ -83,7 +82,7 @@ export default function Analytics() {
             </CardContent>
           </Card>
         </div>
-        
+
         <div className="grid gap-6 md:grid-cols-2 mb-6">
           <Card>
             <CardHeader>
@@ -103,7 +102,7 @@ export default function Analytics() {
               </div>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardHeader>
               <CardTitle>Conversion Rate Trend</CardTitle>
