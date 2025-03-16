@@ -58,7 +58,7 @@ export default function Agents() {
     defaultValues: {
       name: "",
       email: "",
-      specialties: [],
+      specialties: [] as string[],
     },
   });
 
@@ -123,10 +123,12 @@ export default function Agents() {
   });
 
 
-  const onSubmit = (data: { name: string; email: string; specialties: string }) => {
+  const onSubmit = (data: { name: string; email: string; specialties: string[] }) => {
     createAgentMutation.mutate({
       ...data,
-      specialties: data.specialties.split(",").map((s) => s.trim()),
+      specialties: typeof data.specialties === 'string' 
+        ? data.specialties.split(",").map((s) => s.trim())
+        : data.specialties,
     });
   };
 
