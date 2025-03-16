@@ -1,7 +1,8 @@
 import { Link, useLocation } from "wouter";
 import { 
   LayoutDashboard, 
-  Users, 
+  Users,
+  BarChart, 
   Menu
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -25,6 +26,11 @@ const menuItems = [
     label: "Agents",
     icon: Users,
     href: "/agents",
+  },
+  {
+    label: "Analytics",
+    icon: BarChart,
+    href: "/analytics",
   },
 ];
 
