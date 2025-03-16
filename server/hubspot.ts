@@ -1,5 +1,6 @@
 import type { InsertLead, InsertAgent } from "@shared/schema";
 import { Client } from "@hubspot/api-client";
+import axios from "axios";
 
 export class HubSpotClient {
   private client: Client;
@@ -42,29 +43,37 @@ export class HubSpotClient {
 
   async getAgents(): Promise<InsertAgent[]> {
     try {
-      const { results } = await this.client.crm.contacts.searchApi.doSearch({
-        filterGroups: [
-          {
-            filters: [
+      const response = await axios.get(
+        "https://api.hubapi.com/crm/v3/objects/contacts",
+        {
+          headers: {
+            Authorization: `Bearer ${this.client.accessToken}`,
+            "Content-Type": "application/json",
+          },
+          params: {
+            properties: ["email", "firstname", "lastname"],
+            filterGroups: [
               {
-                propertyName: "is_agent",
-                operator: "EQ",
-                value: "true"
-              }
-            ]
-          }
-        ],
-        properties: ["email", "firstname", "lastname"],
-        limit: 100
-      });
+                filters: [
+                  {
+                    propertyName: "is_agent",
+                    operator: "EQ",
+                    value: "true",
+                  },
+                ],
+              },
+            ],
+          },
+        }
+      );
 
-      return results
+      return response.data.results
         .filter(contact => contact.properties.email)
         .map(contact => ({
           name: contact.properties.firstname && contact.properties.lastname
             ? `${contact.properties.firstname} ${contact.properties.lastname}`.trim()
-            : contact.properties.email!.split('@')[0],
-          email: contact.properties.email!,
+            : contact.properties.email.split('@')[0],
+          email: contact.properties.email,
           specialties: [], // We maintain specialties locally
         }));
     } catch (error) {
