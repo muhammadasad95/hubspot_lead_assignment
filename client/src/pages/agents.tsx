@@ -105,6 +105,24 @@ export default function Agents() {
     },
   });
 
+  const syncAgentsMutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest("POST", "/api/agents/sync"); // Placeholder API endpoint
+    },
+    onSuccess: () => {
+      toast({ title: "Agents synced successfully!" });
+      queryClient.invalidateQueries({ queryKey: ["/api/agents"] });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error syncing agents",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+
   const onSubmit = (data: { name: string; email: string; specialties: string }) => {
     createAgentMutation.mutate({
       ...data,
@@ -135,6 +153,17 @@ export default function Agents() {
     <div className="container mx-auto p-6">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Sales Agents</h1>
+        <div className="flex gap-2">
+          <Button 
+            onClick={() => syncAgentsMutation.mutate()}
+            disabled={syncAgentsMutation.isPending}
+          >
+            {syncAgentsMutation.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+            ) : null}
+            Sync with HubSpot
+          </Button>
+        </div>
         <Dialog>
           <DialogTrigger asChild>
             <Button>
