@@ -49,86 +49,13 @@ export default function Analytics() {
       <div className="container mx-auto p-6">
         <h1 className="text-3xl font-bold mb-6">Analytics Dashboard</h1>
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Total Agents</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{metrics?.totalAgents || 0}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle>Total Assignments</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{metrics?.totalAssignments || 0}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle>Average AI Score</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{metrics?.averageAiScore || 0}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle>Conversion Rate</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{metrics?.conversionRate || 0}%</div>
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="grid gap-6 md:grid-cols-2 mb-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Daily Assignments</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="date" />
-                    <YAxis />
-                    <Tooltip />
-                    <Bar dataKey="assignments" fill="#8884d8" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Conversion Rate Trend</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="date" />
-                    <YAxis />
-                    <Tooltip />
-                    <Line type="monotone" dataKey="conversionRate" stroke="#82ca9d" />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-          {[...Array(4)].map((_, i) => (
+          {[1, 2, 3, 4].map((i) => (
             <Card key={i}>
               <CardHeader>
-                <Skeleton className="h-4 w-[140px]" />
+                <Skeleton className="h-4 w-24" />
               </CardHeader>
               <CardContent>
-                <Skeleton className="h-8 w-[60px]" />
+                <Skeleton className="h-8 w-16" />
               </CardContent>
             </Card>
           ))}
@@ -141,8 +68,8 @@ export default function Analytics() {
   const agentPerformance = agents?.map(agent => {
     const agentAssignments = assignments?.filter(a => a.agentId === agent.id) || [];
     const conversions = agentAssignments.filter(a => a.status === "converted").length;
-    const conversionRate = agentAssignments.length > 0 
-      ? (conversions / agentAssignments.length) * 100 
+    const conversionRate = agentAssignments.length > 0
+      ? (conversions / agentAssignments.length) * 100
       : 0;
 
     return {
@@ -165,7 +92,7 @@ export default function Analytics() {
             <CardTitle>Total Agents</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold">{metrics.totalAgents}</p>
+            <p className="text-3xl font-bold">{metrics?.totalAgents || 0}</p>
           </CardContent>
         </Card>
 
@@ -174,7 +101,7 @@ export default function Analytics() {
             <CardTitle>Total Assignments</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold">{metrics.totalAssignments}</p>
+            <p className="text-3xl font-bold">{metrics?.totalAssignments || 0}</p>
           </CardContent>
         </Card>
 
@@ -183,7 +110,7 @@ export default function Analytics() {
             <CardTitle>Average AI Score</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold">{metrics.averageAiScore}</p>
+            <p className="text-3xl font-bold">{metrics?.averageAiScore || 0}</p>
           </CardContent>
         </Card>
 
@@ -192,31 +119,51 @@ export default function Analytics() {
             <CardTitle>Conversion Rate</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold">{metrics.conversionRate}%</p>
+            <p className="text-3xl font-bold">{metrics?.conversionRate || 0}%</p>
           </CardContent>
         </Card>
       </div>
 
-      <div className="grid gap-6 mb-6">
+      <div className="grid gap-6 md:grid-cols-2 mb-6">
         <Card>
           <CardHeader>
-            <CardTitle>Daily Assignment Trends</CardTitle>
-            <CardDescription>Number of assignments and conversions over time</CardDescription>
+            <CardTitle>Daily Assignments</CardTitle>
           </CardHeader>
-          <CardContent className="h-[300px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={metrics.dailyMetrics}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" />
-                <YAxis />
-                <Tooltip />
-                <Line type="monotone" dataKey="assignments" stroke="#8884d8" name="Assignments" />
-                <Line type="monotone" dataKey="conversions" stroke="#82ca9d" name="Conversions" />
-              </LineChart>
-            </ResponsiveContainer>
+          <CardContent>
+            <div className="h-[300px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="date" />
+                  <YAxis />
+                  <Tooltip />
+                  <Bar dataKey="assignments" fill="#8884d8" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           </CardContent>
         </Card>
 
+        <Card>
+          <CardHeader>
+            <CardTitle>Conversion Rate Trend</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[300px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="date" />
+                  <YAxis />
+                  <Tooltip />
+                  <Line type="monotone" dataKey="conversionRate" stroke="#82ca9d" />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+      <div className="grid gap-6 mb-6">
         <Card>
           <CardHeader>
             <CardTitle>Agent Performance</CardTitle>
