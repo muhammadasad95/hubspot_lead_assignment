@@ -109,7 +109,45 @@ export async function registerRoutes(app: Express) {
     }
   });
 
-  app.get("/api/assignments", async (_req, res) => {
+  app.get("/api/analytics/metrics", async (_req, res) => {
+  try {
+    const agents = await storage.listAgents();
+    const assignments = await storage.getAssignments();
+    const leads = await storage.listLeads();
+
+    const dailyMetrics = assignments.reduce((acc, assignment) => {
+      const date = assignment.assignedAt.toISOString().split('T')[0];
+      if (!acc[date]) {
+        acc[date] = { assignments: 0, conversions: 0 };
+      }
+      acc[date].assignments++;
+      if (assignment.status === 'converted') {
+        acc[date].conversions++;
+      }
+      return acc;
+    }, {} as Record<string, { assignments: number; conversions: number }>);
+
+    const metrics = {
+      totalAgents: agents.length,
+      totalAssignments: assignments.length,
+      totalLeads: leads.length,
+      averageAiScore: Math.round(agents.reduce((sum, agent) => sum + agent.aiScore, 0) / agents.length),
+      conversionRate: assignments.length ? 
+        Math.round((assignments.filter(a => a.status === 'converted').length / assignments.length) * 100) : 0,
+      dailyMetrics: Object.entries(dailyMetrics).map(([date, data]) => ({
+        date,
+        ...data,
+        conversionRate: Math.round((data.conversions / data.assignments) * 100)
+      }))
+    };
+
+    res.json(metrics);
+  } catch (error) {
+    res.status(500).json({ message: error instanceof Error ? error.message : "Unknown error" });
+  }
+});
+
+app.get("/api/assignments", async (_req, res) => {
     try {
       const assignments = await storage.getAssignments();
       res.json(assignments);

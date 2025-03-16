@@ -1,3 +1,4 @@
+
 import { useQuery } from "@tanstack/react-query";
 import {
   Card,
@@ -18,26 +19,43 @@ import {
   Bar,
 } from "recharts";
 import { Loader2 } from "lucide-react";
-import type { Agent, Assignment, PerformanceMetric } from "@shared/schema";
+import type { Agent, Assignment } from "@shared/schema";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function Analytics() {
-  const { data: agents, isLoading: isLoadingAgents } = useQuery<Agent[]>({
+  const { data: metrics, isLoading: isLoadingMetrics } = useQuery({
+    queryKey: ["/api/analytics/metrics"],
+  });
+
+  const { data: agents } = useQuery<Agent[]>({
     queryKey: ["/api/agents"],
   });
 
-  const { data: assignments, isLoading: isLoadingAssignments } = useQuery<Assignment[]>({
+  const { data: assignments } = useQuery<Assignment[]>({
     queryKey: ["/api/assignments"],
   });
 
-  if (isLoadingAgents || isLoadingAssignments) {
+  if (isLoadingMetrics) {
     return (
-      <div className="flex h-full items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin" />
+      <div className="container mx-auto p-6">
+        <h1 className="text-3xl font-bold mb-6">Analytics Dashboard</h1>
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-6">
+          {[...Array(4)].map((_, i) => (
+            <Card key={i}>
+              <CardHeader>
+                <Skeleton className="h-4 w-[140px]" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-8 w-[60px]" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       </div>
     );
   }
 
-  // Calculate conversion rates by agent
+  // Calculate agent performance metrics
   const agentPerformance = agents?.map(agent => {
     const agentAssignments = assignments?.filter(a => a.agentId === agent.id) || [];
     const conversions = agentAssignments.filter(a => a.status === "converted").length;
@@ -51,7 +69,7 @@ export default function Analytics() {
       conversions,
       conversionRate: Math.round(conversionRate),
       aiScore: agent.aiScore,
-      avgResponseTime: agent.responseTime,
+      avgResponseTime: Math.round(agent.responseTime || 0),
     };
   });
 
@@ -65,7 +83,7 @@ export default function Analytics() {
             <CardTitle>Total Agents</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold">{agents?.length || 0}</p>
+            <p className="text-3xl font-bold">{metrics.totalAgents}</p>
           </CardContent>
         </Card>
 
@@ -74,7 +92,7 @@ export default function Analytics() {
             <CardTitle>Total Assignments</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold">{assignments?.length || 0}</p>
+            <p className="text-3xl font-bold">{metrics.totalAssignments}</p>
           </CardContent>
         </Card>
 
@@ -83,12 +101,7 @@ export default function Analytics() {
             <CardTitle>Average AI Score</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold">
-              {Math.round(
-                (agents?.reduce((sum, agent) => sum + agent.aiScore, 0) || 0) /
-                  (agents?.length || 1)
-              )}
-            </p>
+            <p className="text-3xl font-bold">{metrics.averageAiScore}</p>
           </CardContent>
         </Card>
 
@@ -97,93 +110,66 @@ export default function Analytics() {
             <CardTitle>Conversion Rate</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold">
-              {Math.round(
-                (assignments?.filter(a => a.status === "converted").length || 0) /
-                  (assignments?.length || 1) * 100
-              )}%
-            </p>
+            <p className="text-3xl font-bold">{metrics.conversionRate}%</p>
           </CardContent>
         </Card>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 mb-6">
+      <div className="grid gap-6 mb-6">
         <Card>
           <CardHeader>
-            <CardTitle>Agent Performance</CardTitle>
-            <CardDescription>Conversion rates by agent</CardDescription>
+            <CardTitle>Daily Assignment Trends</CardTitle>
+            <CardDescription>Number of assignments and conversions over time</CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={agentPerformance}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" />
-                  <YAxis />
-                  <Tooltip />
-                  <Bar dataKey="conversionRate" fill="#2563eb" name="Conversion Rate %" />
-                  <Bar dataKey="aiScore" fill="#7c3aed" name="AI Score" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+          <CardContent className="h-[300px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={metrics.dailyMetrics}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="date" />
+                <YAxis />
+                <Tooltip />
+                <Line type="monotone" dataKey="assignments" stroke="#8884d8" name="Assignments" />
+                <Line type="monotone" dataKey="conversions" stroke="#82ca9d" name="Conversions" />
+              </LineChart>
+            </ResponsiveContainer>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle>Response Times</CardTitle>
-            <CardDescription>Average response time by agent (minutes)</CardDescription>
+            <CardTitle>Agent Performance</CardTitle>
+            <CardDescription>Detailed metrics for each agent</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={agentPerformance}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" />
-                  <YAxis />
-                  <Tooltip />
-                  <Bar dataKey="avgResponseTime" fill="#2563eb" name="Avg Response Time" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Agent Details</CardTitle>
-          <CardDescription>Detailed performance metrics for each agent</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="relative overflow-x-auto">
-            <table className="w-full text-sm text-left">
-              <thead className="text-xs uppercase">
-                <tr>
-                  <th className="px-6 py-3">Agent</th>
-                  <th className="px-6 py-3">AI Score</th>
-                  <th className="px-6 py-3">Assignments</th>
-                  <th className="px-6 py-3">Conversions</th>
-                  <th className="px-6 py-3">Conversion Rate</th>
-                  <th className="px-6 py-3">Avg Response Time</th>
-                </tr>
-              </thead>
-              <tbody>
-                {agentPerformance?.map((agent) => (
-                  <tr key={agent.name} className="border-b">
-                    <td className="px-6 py-4 font-medium">{agent.name}</td>
-                    <td className="px-6 py-4">{agent.aiScore}</td>
-                    <td className="px-6 py-4">{agent.assignments}</td>
-                    <td className="px-6 py-4">{agent.conversions}</td>
-                    <td className="px-6 py-4">{agent.conversionRate}%</td>
-                    <td className="px-6 py-4">{agent.avgResponseTime} min</td>
+            <div className="relative overflow-x-auto">
+              <table className="w-full text-sm text-left">
+                <thead className="text-xs uppercase">
+                  <tr>
+                    <th className="px-6 py-3">Agent</th>
+                    <th className="px-6 py-3">AI Score</th>
+                    <th className="px-6 py-3">Assignments</th>
+                    <th className="px-6 py-3">Conversions</th>
+                    <th className="px-6 py-3">Conversion Rate</th>
+                    <th className="px-6 py-3">Avg Response Time</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
+                </thead>
+                <tbody>
+                  {agentPerformance?.map((agent) => (
+                    <tr key={agent.name} className="border-b">
+                      <td className="px-6 py-4 font-medium">{agent.name}</td>
+                      <td className="px-6 py-4">{agent.aiScore}</td>
+                      <td className="px-6 py-4">{agent.assignments}</td>
+                      <td className="px-6 py-4">{agent.conversions}</td>
+                      <td className="px-6 py-4">{agent.conversionRate}%</td>
+                      <td className="px-6 py-4">{agent.avgResponseTime} min</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
